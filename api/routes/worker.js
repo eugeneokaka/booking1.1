@@ -7,11 +7,13 @@ const router = express.Router();
 // POST /workers - Create a new worker (with or without service)
 router.post("/", async (req, res) => {
   try {
-    const { name, email, serviceId } = req.body;
+    const { firstName, lastName, email, serviceId } = req.body;
 
     // Validate required fields
-    if (!name || !email) {
-      return res.status(400).json({ error: "Name and email are required" });
+    if (!firstName || !lastName || !email) {
+      return res
+        .status(400)
+        .json({ error: "First name, last name, and email are required" });
     }
 
     let service = null;
@@ -19,7 +21,7 @@ router.post("/", async (req, res) => {
     // If serviceId is provided, check if it exists
     if (serviceId) {
       service = await prisma.service.findUnique({
-        where: { id: serviceId },
+        where: { id: serviceId }, // UUID is a string, no parseInt
       });
 
       if (!service) {
@@ -30,7 +32,8 @@ router.post("/", async (req, res) => {
     // Create worker
     const worker = await prisma.worker.create({
       data: {
-        name,
+        firstName,
+        lastName,
         email,
         serviceId: service ? service.id : null,
       },

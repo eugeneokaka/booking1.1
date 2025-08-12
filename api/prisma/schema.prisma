@@ -8,58 +8,60 @@ generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  fullName  String
+  id        String    @id @default(uuid())
+  firstName String
+  lastName  String
   email     String    @unique
   phone     String
   bookings  Booking[]
+  password  String?
 }
 
 model Service {
-  id          Int         @id @default(autoincrement())
+  id          String      @id @default(uuid())
   name        String
   description String
   duration    Int?        // in minutes
   timeSlots   TimeSlot[]
   workers     Worker[]    // 1-to-many: service → worker
-  
 }
 
 model Worker {
-  id         Int        @id @default(autoincrement())
-  name       String
+  id         String     @id @default(uuid())
+  firstName  String
+  lastName   String
   email      String     @unique
-  serviceId  Int?       // now optional
+  serviceId  String?    // now optional
   service    Service?   @relation(fields: [serviceId], references: [id])
   bookings   Booking[]
 }
 
 model TimeSlot {
-  id         Int       @id @default(autoincrement())
-  date       DateTime?  // specific day
+  id         String    @id @default(uuid())
+  date       DateTime? // specific day
   startTime  String    // e.g., "10:00"
   endTime    String    // e.g., "11:00"
   isBooked   Boolean   @default(false)
 
-  serviceId  Int
+  serviceId  String
   service    Service   @relation(fields: [serviceId], references: [id])
   booking    Booking?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model Booking {
-  id          Int       @id @default(autoincrement())
-  userId      Int
-  timeSlotId  Int       @unique
-  workerId    Int       // assigned worker
+  id          String    @id @default(uuid())
+  userId      String
+  timeSlotId  String    @unique
+  workerId    String    // assigned worker
 
   createdAt   DateTime  @default(now())
 
@@ -67,3 +69,4 @@ model Booking {
   timeSlot    TimeSlot  @relation(fields: [timeSlotId], references: [id])
   worker      Worker    @relation(fields: [workerId], references: [id])
 }
+

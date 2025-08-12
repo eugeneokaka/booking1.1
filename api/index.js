@@ -14,10 +14,13 @@ app.use(express.json());
 const serviceRoutes = require("./routes/services");
 const workerRoutes = require("./routes/worker");
 const bookingRoutes = require("./routes/booking");
+const userRoutes = require("./routes/user");
+const cookieParser = require("cookie-parser");
+app.use("/users", userRoutes);
 app.use("/bookings", bookingRoutes);
 app.use("/services", serviceRoutes);
 app.use("/workers", workerRoutes);
-
+app.use(cookieParser());
 // Health Check
 app.get("/", (req, res) => {
   res.send("Event Booking API is running!");

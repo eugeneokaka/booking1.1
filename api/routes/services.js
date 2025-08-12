@@ -9,7 +9,7 @@ router.get("/", async (req, res) => {
     const services = await prisma.service.findMany({
       include: {
         workers: true,
-        timeSlots: true, // you could filter here for only available slots
+        timeSlots: true, // could be filtered for available slots
       },
     });
 
@@ -24,12 +24,11 @@ router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Find the service with its related data
     const service = await prisma.service.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: {
         timeSlots: {
-          orderBy: { startTime: "asc" }, // optional sorting
+          orderBy: { startTime: "asc" },
         },
         workers: true,
       },
@@ -59,11 +58,12 @@ router.post("/", async (req, res) => {
     const service = await prisma.service.create({
       data: {
         name,
-        description, // ✅ pass description here
+        description,
         duration,
         timeSlots: {
           create:
             timeSlots?.map((slot) => ({
+              date: slot.date ? new Date(slot.date) : null, // now supports date
               startTime: slot.startTime,
               endTime: slot.endTime,
             })) || [],

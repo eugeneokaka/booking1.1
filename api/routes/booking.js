@@ -4,182 +4,110 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 /**
- * Body:
+ * Example body:
  * {
- *   fullName: "John Doe",
- *   email: "john@example.com",
- *   phone: "123456789",
- *   serviceId: 2,
- *   workerId: 3,
- *   date: "2025-08-15",
- *   startTime: "10:00",
- *   endTime: "11:00"
+ *   "firstName": "John",
+ *   "lastName": "Doe",
+ *   "email": "john@example.com",
+ *   "phone": "123456789",
+ *   "serviceId": "uuid-of-service",
+ *   "workerId": "uuid-of-worker",
+ *   "date": "2025-08-15",
+ *   "startTime": "10:00",
+ *   "endTime": "11:00"
  * }
  */
-router.post("/", async (req, res) => {
-  const {
-    fullName,
-    email,
-    phone,
-    serviceId,
-    workerId,
-    date,
-    startTime,
-    endTime,
-  } = req.body;
-
-  if (
-    !fullName ||
-    !email ||
-    !phone ||
-    !serviceId ||
-    !workerId ||
-    !date ||
-    !startTime ||
-    !endTime
-  ) {
-    return res.status(400).json({
-      error:
-        "fullName, email, phone, serviceId, workerId, date, startTime, and endTime are required",
+router.get("/", async (req, res) => {
+  try {
+    const bookings = await prisma.booking.findMany({
+      include: {
+        user: true,
+        worker: true,
+        timeSlot: {
+          include: {
+            service: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
+
+    res.json(bookings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch bookings" });
+  }
+});
+router.post("/", async (req, res) => {
+  const { date, startTime, endTime, serviceId, workerId, userId } = req.body;
+  console.log("Booking request data:", req.body);
+  // const userId = req.userId; // from JWT middleware
+
+  if (!date || !startTime || !endTime || !serviceId || !workerId) {
+    return res.status(400).json({ error: "Missing required fields" });
   }
 
   try {
-    // 1. Create or get user
-    let user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: { fullName, email, phone },
-      });
-    }
-
-    // 2. Check if slot already exists for the same date and time
-    const existingSlot = await prisma.timeSlot.findFirst({
+    // Step 1: Check if a time slot already exists with same date and time
+    const existingTimeSlot = await prisma.timeSlot.findFirst({
       where: {
-        serviceId,
         date: new Date(date),
         startTime,
         endTime,
+        serviceId,
+        isBooked: true,
       },
     });
 
-    if (existingSlot) {
-      return res.status(400).json({
-        error: "This time slot is already booked for the selected date.",
+    if (existingTimeSlot) {
+      return res
+        .status(409)
+        .json({ error: "This time slot is already booked" });
+    }
+
+    // Step 2: Create or find the timeslot
+    let timeSlot = await prisma.timeSlot.findFirst({
+      where: {
+        date: new Date(date),
+        startTime,
+        endTime,
+        serviceId,
+      },
+    });
+
+    if (!timeSlot) {
+      timeSlot = await prisma.timeSlot.create({
+        data: {
+          date: new Date(date),
+          startTime,
+          endTime,
+          serviceId,
+        },
       });
     }
 
-    // 3. Create a new time slot for the specific date
-    const newSlot = await prisma.timeSlot.create({
-      data: {
-        date: new Date(date),
-        startTime,
-        endTime,
-        isBooked: true,
-        serviceId,
-      },
-    });
-
-    // 4. Create booking linked to that time slot and user
+    // Step 3: Create booking
     const booking = await prisma.booking.create({
       data: {
-        userId: user.id,
-        timeSlotId: newSlot.id,
+        userId,
+        timeSlotId: timeSlot.id,
         workerId,
-      },
-      include: {
-        user: true,
-        timeSlot: true,
-        worker: true,
       },
     });
 
-    res.status(201).json(booking);
-  } catch (error) {
-    console.error("Error creating booking:", error);
+    // Step 4: Mark timeslot as booked
+    await prisma.timeSlot.update({
+      where: { id: timeSlot.id },
+      data: { isBooked: true },
+    });
+
+    res.status(201).json({ message: "Booking created", booking });
+    console.log("Booking created:", booking);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Failed to create booking" });
   }
 });
-
 module.exports = router;
-
-// const express = require("express");
-// const { PrismaClient } = require("../generated/prisma");
-// const prisma = new PrismaClient();
-// const router = express.Router();
-
-// /**
-//  * Body:
-//  * {
-//  *   userId: 1,
-//  *   serviceId: 2,
-//  *   workerId: 3,
-//  *   date: "2025-08-15",
-//  *   startTime: "10:00",
-//  *   endTime: "11:00"
-//  * }
-//  */
-// router.post("/", async (req, res) => {
-//   const { userId, serviceId, workerId, date, startTime, endTime } = req.body;
-
-//   if (!userId || !serviceId || !workerId || !date || !startTime || !endTime) {
-//     return res.status(400).json({
-//       error:
-//         "userId, serviceId, workerId, date, startTime, and endTime are required",
-//     });
-//   }
-
-//   try {
-//     // Check if the same slot for that date/service is already booked
-//     const existingSlot = await prisma.timeSlot.findFirst({
-//       where: {
-//         serviceId,
-//         date: new Date(date),
-//         startTime,
-//         endTime,
-//         isBooked: true,
-//       },
-//     });
-
-//     if (existingSlot) {
-//       return res.status(400).json({
-//         error: "This time slot is already booked for the selected date.",
-//       });
-//     }
-
-//     // Create a new time slot for the specific date
-//     const newSlot = await prisma.timeSlot.create({
-//       data: {
-//         date: new Date(date),
-//         startTime,
-//         endTime,
-//         isBooked: true, // mark as booked immediately
-//         serviceId,
-//       },
-//     });
-
-//     // Create booking linked to that time slot
-//     const booking = await prisma.booking.create({
-//       data: {
-//         userId,
-//         timeSlotId: newSlot.id,
-//         workerId,
-//       },
-//       include: {
-//         user: true,
-//         timeSlot: true,
-//         worker: true,
-//       },
-//     });
-
-//     res.status(201).json(booking);
-//   } catch (error) {
-//     console.error("Error creating booking:", error);
-//     res.status(500).json({ error: "Failed to create booking" });
-//   }
-// });
-
-// module.exports = router;
