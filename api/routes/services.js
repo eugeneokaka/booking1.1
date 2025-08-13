@@ -44,6 +44,34 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+// router.get("/:id/slots", async (req, res) => {
+//   const { id } = req.params;
+//   const { date } = req.query;
+
+//   if (!date) {
+//     return res.status(400).json({ error: "Date is required" });
+//   }
+
+//   try {
+//     const slots = await prisma.timeSlot.findMany({
+//       where: {
+//         serviceId: id,
+//         date: new Date(date),
+//       },
+//       orderBy: { startTime: "asc" },
+//     });
+
+//     res.json(
+//       slots.map((slot) => ({
+//         time: slot.startTime,
+//         isBooked: slot.isBooked || false,
+//       }))
+//     );
+//   } catch (error) {
+//     console.error("Error fetching slots:", error);
+//     res.status(500).json({ error: "Failed to fetch slots" });
+//   }
+// });
 
 router.post("/", async (req, res) => {
   const { name, description, duration, timeSlots, workerIds } = req.body;

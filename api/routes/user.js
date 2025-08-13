@@ -15,6 +15,53 @@ const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_here";
 // app.use(cookieParser());
 
 // Create user (Sign Up)
+router.get("/", async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+      },
+    });
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+/**
+ * GET /users/:userId/bookings
+ * Returns all bookings for a specific user
+ */
+router.get("/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const bookings = await prisma.booking.findMany({
+      where: { userId },
+      include: {
+        timeSlot: {
+          include: {
+            service: true,
+          },
+        },
+        worker: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.json(bookings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch user bookings" });
+  }
+});
 router.post("/", async (req, res) => {
   let { firstName, lastName, email, phone, password } = req.body;
   console.log("Received data:", req.body);
@@ -55,6 +102,7 @@ router.post("/", async (req, res) => {
 // Login user
 router.post("/login", async (req, res) => {
   let { email, password } = req.body;
+  console.log("Login request data:", req.body);
 
   // Check required fields
   if (!email || !password) {
@@ -63,6 +111,7 @@ router.post("/login", async (req, res) => {
 
   // Clean up email
   email = email.toLowerCase().trim();
+  console.log("Cleaned email:", email);
 
   try {
     // Find user by email only
@@ -82,7 +131,7 @@ router.post("/login", async (req, res) => {
 
     // Create JWT
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, id: user.id },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
