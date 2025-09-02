@@ -9,7 +9,10 @@ const prisma = new PrismaClient();
 // Middlewares
 app.use(
   cors({
-    origin: "http://localhost:3000", // React frontend URL or any allowed origin
+    origin: [
+      "http://localhost:3000", // local dev
+      "https://booking1-1-client.vercel.app", // deployed frontend
+    ],
     credentials: true, // if you want to allow cookies/auth headers
   })
 );
